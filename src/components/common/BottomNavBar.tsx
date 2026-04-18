@@ -1,47 +1,51 @@
 import React from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, SafeAreaView } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { COLORS } from '../../constants/colors';
+import { CustomText } from '../CustomText';
+import { CustomView } from '../CustomView';
+
 
 const BottomNavBar = () => {
   return (
     <SafeAreaView edges={['bottom']} style={styles.safeArea}>
-      <View style={styles.container}>
+      <CustomView row style={styles.container}>
         <TouchableOpacity style={styles.tab}>
           <Text style={styles.iconContainer}>
             <Text style={styles.iconHome}>🏠</Text>
           </Text>
-          <Text style={[styles.label, styles.activeLabel]}>HOME</Text>
+          <CustomText tx="home" style={[styles.label, styles.activeLabel]} />
           <View style={styles.activeIndicator} />
         </TouchableOpacity>
 
         <TouchableOpacity style={styles.tab}>
-           <Text style={styles.iconContainer}>
+          <Text style={styles.iconContainer}>
             <Text style={styles.icon}>💬</Text>
           </Text>
-          <Text style={styles.label}>CHATS</Text>
+          <CustomText tx="chats" style={styles.label} />
         </TouchableOpacity>
 
         <View style={styles.sellTabContainer}>
           <TouchableOpacity style={styles.sellButton}>
             <Text style={styles.sellIcon}>+</Text>
           </TouchableOpacity>
-          <Text style={styles.label}>SELL</Text>
+          <CustomText tx="sell" style={styles.label} />
         </View>
 
         <TouchableOpacity style={styles.tab}>
-           <Text style={styles.iconContainer}>
+          <Text style={styles.iconContainer}>
             <Text style={styles.icon}>📄</Text>
           </Text>
-          <Text style={styles.label}>MY ADS</Text>
+          <CustomText tx="my_ads" style={styles.label} />
         </TouchableOpacity>
 
         <TouchableOpacity style={styles.tab}>
-           <Text style={styles.iconContainer}>
+          <Text style={styles.iconContainer}>
             <Text style={styles.icon}>👤</Text>
           </Text>
-          <Text style={styles.label}>ACCOUNT</Text>
+          <CustomText tx="account" style={styles.label} />
         </TouchableOpacity>
-      </View>
+      </CustomView>
     </SafeAreaView>
   );
 };
@@ -84,7 +88,7 @@ const styles = StyleSheet.create({
     borderRadius: 24,
     justifyContent: 'center',
     alignItems: 'center',
-    marginTop: -15, // Floating effect
+    marginTop: -15,
     marginBottom: 4,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },

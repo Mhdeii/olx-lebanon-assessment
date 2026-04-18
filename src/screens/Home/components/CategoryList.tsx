@@ -6,93 +6,96 @@ import {
   ScrollView,
   TouchableOpacity,
 } from 'react-native';
-import {Category} from '../../../types/category.types';
-import {COLORS} from '../../../constants/colors';
-import {SPACING} from '../../../constants/spacing';
+import Ionicons from 'react-native-vector-icons/Ionicons';
+import { observer } from 'mobx-react-lite';
+import { languageStore } from '../../../store/language.store';
+import { CustomView } from '../../../components/CustomView';
+import { CustomText } from '../../../components/CustomText';
+import { Category } from '../../../types/category.types';
+import { COLORS } from '../../../constants/colors';
+import { SPACING } from '../../../constants/spacing';
 
 interface CategoryListProps {
   categories: Category[];
   onCategoryPress: (category: Category) => void;
 }
 
-// Maps category IDs to basic emojis as dummy icons
-const CATEGORY_ICONS: Record<string, string> = {
-  '1': '🚗', // Vehicles
-  '2': '🏢', // Properties
-  '3': '📱', // Mobiles
-  '4': '💻', // Electronics
-  '5': '🛋️', // Furniture
-};
+import { getCategoryIcon } from '../../../utils/categoryIcons';
 
-const CategoryList: React.FC<CategoryListProps> = ({
+const CategoryList: React.FC<CategoryListProps> = observer(({
   categories,
   onCategoryPress,
 }) => {
+  const isRTL = languageStore.isRTL;
+
   if (!categories || categories.length === 0) return null;
+
+  // Filter main categories (level 0 or important ones)
+  const mainCategories = categories.filter(c => c.level === 0).slice(0, 10);
 
   return (
     <View style={styles.container}>
-      <View style={styles.headerRow}>
-        <Text style={styles.title}>Browse Categories</Text>
+      <CustomView row style={[styles.headerRow]}>
+        <CustomText tx="categories" style={styles.title} />
         <TouchableOpacity>
-          <Text style={styles.seeAll}>See all</Text>
+          <CustomText tx="see_all" style={styles.seeAll} />
         </TouchableOpacity>
-      </View>
-      
-      <ScrollView 
-        horizontal 
+      </CustomView>
+
+      <ScrollView
+        horizontal
         showsHorizontalScrollIndicator={false}
-        contentContainerStyle={styles.scrollContent}
+        contentContainerStyle={[styles.scrollContent, { flexDirection: isRTL ? 'row-reverse' : 'row' }]}
       >
-        {categories.map((cat) => (
-          <TouchableOpacity 
-            key={cat.id} 
+        {mainCategories.map((cat) => (
+          <TouchableOpacity
+            key={cat.id}
             style={styles.categoryItem}
             onPress={() => onCategoryPress(cat)}
             activeOpacity={0.7}
           >
             <View style={styles.iconCircle}>
-              <Text style={styles.iconText}>
-                {CATEGORY_ICONS[cat.externalID] || '📦'}
-              </Text>
+              <Ionicons
+                name={getCategoryIcon(cat.externalID)}
+                size={28}
+                color={COLORS.black}
+              />
             </View>
             <Text style={styles.categoryLabel} numberOfLines={2} ellipsizeMode="tail">
-              {cat.name}
+              {isRTL ? cat.name_l1 : cat.name}
             </Text>
           </TouchableOpacity>
         ))}
       </ScrollView>
     </View>
   );
-};
+});
 
 const styles = StyleSheet.create({
   container: {
     backgroundColor: COLORS.white,
     paddingVertical: SPACING.md,
     borderBottomWidth: 4,
-    borderBottomColor: COLORS.background, // Light grey separation
+    borderBottomColor: COLORS.background,
   },
   headerRow: {
-    flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
     paddingHorizontal: SPACING.lg,
     marginBottom: SPACING.md,
   },
   title: {
-    fontSize: 18,
+    fontSize: 16,
     fontWeight: '700',
     color: '#000',
   },
   seeAll: {
-    fontSize: 14,
-    color: '#2196F3', // Light blue link
+    fontSize: 13,
+    color: '#2196F3',
     fontWeight: '600',
-    textDecorationLine: 'underline',
   },
   scrollContent: {
-    paddingHorizontal: SPACING.md, // slightly less than lg to allow starting earlier
+    paddingHorizontal: SPACING.md,
   },
   categoryItem: {
     width: 80,
@@ -100,27 +103,23 @@ const styles = StyleSheet.create({
     marginHorizontal: SPACING.xs,
   },
   iconCircle: {
-    width: 60,
-    height: 60,
-    borderRadius: 30,
-    backgroundColor: COLORS.primary, // Yellow
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    backgroundColor: COLORS.primary,
     justifyContent: 'center',
     alignItems: 'center',
-    marginBottom: SPACING.sm,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 3,
-    elevation: 2,
+    marginBottom: SPACING.xs,
   },
   iconText: {
-    fontSize: 28,
+    fontSize: 24,
   },
   categoryLabel: {
-    fontSize: 11,
+    fontSize: 10,
     color: COLORS.textPrimary,
     textAlign: 'center',
     fontWeight: '500',
+    height: 28,
   },
 });
 

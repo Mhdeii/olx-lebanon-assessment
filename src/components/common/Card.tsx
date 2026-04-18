@@ -11,7 +11,7 @@ interface CardProps {
 }
 
 const Card: React.FC<CardProps> = ({children, style, onPress, shadow = true}) => {
-  const Container = onPress ? TouchableOpacity : View;
+  const Container = (onPress ? TouchableOpacity : View) as any;
 
   return (
     <Container 

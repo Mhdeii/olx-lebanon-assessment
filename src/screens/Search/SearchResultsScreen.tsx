@@ -1,101 +1,155 @@
-import React, {useEffect} from 'react';
-import {View, StyleSheet, Text, TouchableOpacity, TextInput, ScrollView, SafeAreaView} from 'react-native';
+import React, { useEffect, useCallback } from 'react';
+import { useFocusEffect } from '@react-navigation/native';
+import {
+  View,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  TextInput,
+  ScrollView,
+  SafeAreaView,
+  I18nManager,
+} from 'react-native';
+import { observer } from 'mobx-react-lite';
+import { languageStore } from '../../store/language.store';
+import { t } from '../../i18n/t';
+import { CustomView } from '../../components/CustomView';
+import { CustomText } from '../../components/CustomText';
+import Ionicons from 'react-native-vector-icons/Ionicons';
 import AdList from '../../components/ads/AdList';
-import {useAdsStore} from '../../store/ads.store';
-import {useFiltersStore} from '../../store/filters.store';
-import {COLORS} from '../../constants/colors';
-import {SPACING} from '../../constants/spacing';
+import { useAdsStore } from '../../store/ads.store';
+import { useFiltersStore } from '../../store/filters.store';
+import { COLORS } from '../../constants/colors';
+import { SPACING } from '../../constants/spacing';
 
-const SearchResultsScreen = ({route, navigation}: any) => {
-  const {categoryId, query} = route.params || {};
-  const {ads, loading, loadAds, hasMore, error} = useAdsStore();
-  const {filters, setCategoryId, setQuery} = useFiltersStore();
+const SearchResultsScreen = observer(({ route, navigation }: any) => {
+  const isRTL = languageStore.isRTL;
+  const { categoryId, query } = route.params || {};
+  const { ads, loading, loadAds, hasMore, error } = useAdsStore();
+  const { filters, setCategoryId, setQuery } = useFiltersStore();
 
-  useEffect(() => {
-    // Sync initial params to store
-    if (categoryId) setCategoryId(categoryId);
-    if (query) setQuery(query);
-    
-    // Initial fetch
-    loadAds(filters, true);
-  }, [categoryId, query]);
+  useFocusEffect(
+    useCallback(() => {
+      let isChanged = false;
+      if (categoryId !== undefined && categoryId !== filters.categoryId) {
+        setCategoryId(categoryId);
+        isChanged = true;
+      }
+      if (query !== undefined && query !== filters.query) {
+        setQuery(query);
+        isChanged = true;
+      }
+
+      if (!isChanged) {
+        loadAds(filters, true);
+      }
+    }, [categoryId, query, filters, setCategoryId, setQuery, loadAds])
+  );
 
   const handleRefresh = () => {
     loadAds(filters, true);
   };
 
   const handleLoadMore = () => {
-    if (hasMore) loadAds(filters);
+    if (hasMore && !loading) loadAds(filters);
   };
+
+  const renderHeader = () => (
+    <View style={styles.headerContent}>
+      <CustomView row style={[styles.resultsMetaRow]}>
+        <CustomText 
+          tx="results_for" 
+          txOptions={{ 
+            count: ads.length, 
+            query: query ? `"${query}"` : (route.params?.categoryName || t('search'))
+          }} 
+          style={styles.resultsText} 
+        />
+        <TouchableOpacity style={[styles.sortButton, { flexDirection: isRTL ? 'row-reverse' : 'row' }]}>
+          <CustomText tx="sort_by" style={styles.sortText} />
+          <Ionicons name="swap-vertical" size={14} color="#2196F3" style={{ marginHorizontal: 4 }} />
+        </TouchableOpacity>
+      </CustomView>
+
+      <CustomView row style={[styles.sectionTitleRow]}>
+        <CustomText tx="elite_ads" style={styles.sectionTitle} />
+        <TouchableOpacity style={{ flexDirection: 'row', alignItems: 'center' }}>
+          <CustomText tx="view_more" style={styles.viewMoreText} />
+          <Ionicons name="chevron-forward" size={14} color="#555" />
+        </TouchableOpacity>
+      </CustomView>
+    </View>
+  );
 
   return (
     <SafeAreaView style={styles.container}>
-      {/* Top Search Header */}
-      <View style={styles.topHeader}>
+      <CustomView row style={[styles.topHeader]}>
         <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
-          <Text style={styles.backIcon}>〈</Text>
+          <Ionicons name={isRTL ? "chevron-forward" : "chevron-back"} size={26} color="#000" />
         </TouchableOpacity>
-        <View style={styles.searchContainer}>
-          <Text style={styles.searchIcon}>🔍</Text>
+        <CustomView row style={[styles.searchContainer]}>
+          <Ionicons name="search-outline" size={20} color={COLORS.textSecondary} style={{ marginHorizontal: SPACING.xs }} />
           <TextInput
-            style={styles.searchInput}
-            placeholder="What are you looking for?"
-            defaultValue={filters.query}
+            style={[styles.searchInput, { textAlign: isRTL ? 'right' : 'left' }]}
+            placeholder={t('search_placeholder')}
+            placeholderTextColor="#888"
+            defaultValue={query}
             onSubmitEditing={(e) => {
-               setQuery(e.nativeEvent.text);
-               loadAds({...filters, query: e.nativeEvent.text}, true);
+              const val = e.nativeEvent.text;
+              setQuery(val);
             }}
           />
-        </View>
-      </View>
+        </CustomView>
+      </CustomView>
 
-      {/* Filter Chips ScrollView */}
       <View style={styles.chipsWrapper}>
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.chipsContainer}>
-          <TouchableOpacity 
-            style={[styles.chip, styles.filtersChip]} 
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={[styles.chipsContainer, { flexDirection: isRTL ? 'row-reverse' : 'row' }]}
+        >
+          <TouchableOpacity
+            style={[styles.chip, styles.filtersChip, { flexDirection: isRTL ? 'row-reverse' : 'row' }]}
             onPress={() => navigation.navigate('SearchFilters')}
           >
-            <Text style={styles.filtersChipText}>⚙ Filters</Text>
+            <Ionicons name="options-outline" size={16} color="#00B8D9" style={{ marginHorizontal: 4 }} />
+            <CustomText tx="filters" style={styles.filtersChipText} />
           </TouchableOpacity>
-          <TouchableOpacity style={styles.chip}>
-            <Text style={styles.chipText}>All country ˅</Text>
-          </TouchableOpacity>
-          <TouchableOpacity style={styles.chip}>
-            <Text style={styles.chipText}>Cars for Sale</Text>
-          </TouchableOpacity>
-        </ScrollView>
-      </View>
 
-      {/* Results Meta */}
-      <View style={styles.resultsMetaRow}>
-        <Text style={styles.resultsText}>
-          Showing: <Text style={styles.bold}>5932 Results for Cars for Sale</Text>
-        </Text>
-        <TouchableOpacity>
-          <Text style={styles.sortText}>Sort By ⇅</Text>
-        </TouchableOpacity>
+          <TouchableOpacity style={[styles.chip, { flexDirection: isRTL ? 'row-reverse' : 'row' }]}>
+            <CustomText tx="all_country" style={styles.chipText} />
+            <Ionicons name="chevron-down" size={14} color="#555" style={{ marginLeft: 4 }} />
+          </TouchableOpacity>
+
+          {route.params?.categoryName && (
+            <TouchableOpacity style={[styles.chip, { flexDirection: isRTL ? 'row-reverse' : 'row' }]}>
+              <CustomText style={styles.chipText}>{route.params?.categoryName}</CustomText>
+            </TouchableOpacity>
+          )}
+        </ScrollView>
       </View>
 
       {error ? (
         <View style={styles.center}>
-          <Text style={styles.errorText}>{error}</Text>
+          <CustomText style={styles.errorText}>{error}</CustomText>
           <TouchableOpacity onPress={handleRefresh} style={styles.retryButton}>
-             <Text style={styles.retryText}>Retry</Text>
+            <CustomText tx="retry" style={styles.retryText} />
           </TouchableOpacity>
         </View>
       ) : (
         <AdList
-          ads={ads.map(ad => ({...ad, isElite: true}))} // Force Elite style for testing UI
+          ads={ads}
           loading={loading}
           onLoadMore={handleLoadMore}
           onRefresh={handleRefresh}
           refreshing={loading && ads.length === 0}
+          headerComponent={renderHeader()}
+          isEliteMock={true}
         />
       )}
     </SafeAreaView>
   );
-};
+});
 
 const styles = StyleSheet.create({
   container: {
@@ -103,92 +157,101 @@ const styles = StyleSheet.create({
     backgroundColor: COLORS.white,
   },
   topHeader: {
-    flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: SPACING.md,
-    marginTop: SPACING.md,
-    marginBottom: SPACING.sm,
+    paddingHorizontal: SPACING.sm,
+    paddingVertical: SPACING.sm,
+    backgroundColor: COLORS.white,
   },
   backButton: {
-    paddingRight: SPACING.md,
-  },
-  backIcon: {
-    fontSize: 24,
-    color: '#000',
-    fontWeight: '300',
+    paddingHorizontal: 8,
   },
   searchContainer: {
     flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
     borderWidth: 1,
-    borderColor: COLORS.border,
-    borderRadius: 8,
+    borderColor: '#ccc',
+    borderRadius: 4,
     paddingHorizontal: SPACING.sm,
     height: 48,
-  },
-  searchIcon: {
-    fontSize: 16,
-    marginRight: SPACING.sm,
+    marginRight: 8,
   },
   searchInput: {
     flex: 1,
-    fontSize: 15,
-    color: COLORS.textPrimary,
+    fontSize: 16,
+    color: '#000',
+    paddingVertical: 0,
   },
   chipsWrapper: {
-    paddingBottom: SPACING.sm,
+    paddingVertical: 12,
     borderBottomWidth: 1,
-    borderBottomColor: '#F0F0F0',
+    borderBottomColor: '#eee',
   },
   chipsContainer: {
     paddingHorizontal: SPACING.md,
-    flexDirection: 'row',
-    alignItems: 'center',
   },
   chip: {
     paddingHorizontal: 16,
     paddingVertical: 8,
     borderRadius: 20,
     borderWidth: 1,
-    borderColor: '#CCC',
+    borderColor: '#ddd',
     marginRight: 8,
-    backgroundColor: COLORS.white,
+    alignItems: 'center',
     justifyContent: 'center',
   },
   filtersChip: {
-    backgroundColor: COLORS.secondary, // Light Blue
-    borderColor: COLORS.secondaryBorder,
+    backgroundColor: '#E0F7FA',
+    borderColor: '#00B8D9',
   },
   filtersChipText: {
-    color: '#0288D1', // active blue
+    color: '#00B8D9',
     fontWeight: '700',
-    fontSize: 13,
+    fontSize: 14,
   },
   chipText: {
     color: '#333',
-    fontWeight: '500',
-    fontSize: 13,
+    fontWeight: '600',
+    fontSize: 14,
+  },
+  headerContent: {
+    backgroundColor: COLORS.white,
   },
   resultsMetaRow: {
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: SPACING.md,
+    paddingVertical: 16,
+  },
+  resultsText: {
+    fontSize: 14,
+    color: '#666',
+  },
+  sortButton: {
+    alignItems: 'center',
+  },
+  sortText: {
+    color: '#2196F3',
+    fontWeight: '700',
+    fontSize: 14,
+  },
+  sectionTitleRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
     paddingHorizontal: SPACING.md,
-    paddingVertical: SPACING.md,
+    paddingBottom: 16,
   },
-  resultsText: {
-    fontSize: 12,
-    color: '#666',
+  sectionTitle: {
+    fontSize: 16,
+    fontWeight: '500',
+    color: '#333',
   },
-  bold: {
-    fontWeight: 'bold',
-    color: '#000',
-  },
-  sortText: {
-    color: '#0288D1',
-    fontWeight: '600',
-    fontSize: 13,
+  viewMoreText: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: '#333',
+    marginRight: 2,
   },
   center: {
     flex: 1,

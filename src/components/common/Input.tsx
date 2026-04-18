@@ -26,7 +26,7 @@ const Input: React.FC<InputProps> = ({
   return (
     <View style={[styles.container, containerStyle]}>
       {label && <Text style={styles.label}>{label}</Text>}
-      <View style={[styles.inputContainer, error && styles.errorInput]}>
+      <View style={[styles.inputContainer, !!error && styles.errorInput]}>
         <TextInput
           style={[styles.input, style]}
           placeholderTextColor={COLORS.textSecondary}
