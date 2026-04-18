@@ -9,18 +9,17 @@ import {
 import HomeHeader from './components/HomeHeader';
 import CategoryList from './components/CategoryList';
 import AdCard from '../../components/ads/AdCard';
+import BottomNavBar from '../../components/common/BottomNavBar';
 import {fetchCategories} from '../../api/categories.api';
 import {fetchAds} from '../../api/ads.api';
 import {Category} from '../../types/category.types';
 import {Ad} from '../../types/ad.types';
 import {COLORS} from '../../constants/colors';
 import {SPACING} from '../../constants/spacing';
-import Button from '../../components/common/Button';
 
 const HomeScreen = ({navigation}: any) => {
   const [categories, setCategories] = useState<Category[]>([]);
   const [carsAds, setCarsAds] = useState<Ad[]>([]);
-  const [mobileAds, setMobileAds] = useState<Ad[]>([]);
   const [propertyAds, setPropertyAds] = useState<Ad[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -30,15 +29,13 @@ const HomeScreen = ({navigation}: any) => {
         const rawCategories = await fetchCategories();
         setCategories(rawCategories);
 
-        // Fetch curated sections (Categories 1: Vehicles, 3: Mobiles, 2: Properties)
-        const [cars, mobiles, properties] = await Promise.all([
-          fetchAds({categoryId: '1', dynamicFields: {}}, 0, 5),
-          fetchAds({categoryId: '3', dynamicFields: {}}, 0, 5),
-          fetchAds({categoryId: '2', dynamicFields: {}}, 0, 5),
+        // Fetch curated sections (Categories 23: Cars for Sale, Property)
+        const [cars, properties] = await Promise.all([
+          fetchAds({categoryId: '23', dynamicFields: {}}, 0, 5),
+          fetchAds({categoryId: '2', dynamicFields: {}}, 0, 5), // '2' is usually Properties
         ]);
 
         setCarsAds(cars);
-        setMobileAds(mobiles);
         setPropertyAds(properties);
       } catch (error) {
         console.error('Failed to load home data', error);
@@ -54,69 +51,67 @@ const HomeScreen = ({navigation}: any) => {
     <View style={styles.section}>
       <View style={styles.sectionHeader}>
         <Text style={styles.sectionTitle}>{title}</Text>
-        <TouchableOpacity onPress={() => navigation.navigate('SearchResults', {categoryId})}>
-           <Text style={styles.seeAll}>See All</Text>
-        </TouchableOpacity>
+        <Text style={styles.seeAll} onPress={() => navigation.navigate('SearchResults', {categoryId})}>
+          See all
+        </Text>
       </View>
-      <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+      <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.cardsScroll}>
         {ads.map((ad) => (
           <AdCard 
             key={ad.id} 
             ad={ad} 
             horizontal 
-            onPress={() => console.log('Ad pressed', ad.id)} 
+            onPress={() => navigation.navigate('SearchResults', {categoryId})} 
           />
         ))}
       </ScrollView>
     </View>
   );
 
-  if (loading) {
-    return (
-      <View style={styles.loader}>
-        <ActivityIndicator size="large" color={COLORS.primary} />
-      </View>
-    );
-  }
-
   return (
     <View style={styles.container}>
-      <HomeHeader 
-        location="Beirut, Lebanon" 
-        onSearch={(q) => navigation.navigate('SearchResults', {query: q})}
-        onLocationPress={() => console.log('Location pressed')}
-      />
-      <ScrollView contentContainerStyle={styles.content}>
+      <ScrollView style={styles.mainScroll} contentContainerStyle={styles.content}>
+        <HomeHeader 
+          location="Lebanon" 
+          onSearch={(q) => navigation.navigate('SearchResults', {query: q})}
+          onLocationPress={() => console.log('Location')}
+        />
         <CategoryList 
           categories={categories} 
           onCategoryPress={(c) => navigation.navigate('SearchResults', {categoryId: c.externalID})} 
         />
         
-        {renderSection('Cars for Sale', carsAds, '1')}
-        {renderSection('Mobile Phones', mobileAds, '3')}
-        {renderSection('Properties', propertyAds, '2')}
+        {loading ? (
+          <View style={styles.loader}>
+            <ActivityIndicator size="large" color={COLORS.primary} />
+          </View>
+        ) : (
+          <>
+            {renderSection('International Properties', propertyAds, '2')}
+            {renderSection('Cars for Sale', carsAds, '23')}
+          </>
+        )}
       </ScrollView>
+      
+      {/* Sticky Bottom Nav Bar */}
+      <BottomNavBar />
     </View>
   );
 };
 
-// Simple Touchable wrapper for navigation
-const TouchableOpacity = ({children, onPress, style}: any) => (
-  <View onStartShouldSetResponder={() => { onPress(); return true; }} style={style}>
-    {children}
-  </View>
-);
-
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: COLORS.surface,
+    backgroundColor: COLORS.background, // F5F5F5
+  },
+  mainScroll: {
+    flex: 1,
   },
   content: {
     paddingBottom: SPACING.xl,
   },
   loader: {
-    flex: 1,
+    padding: SPACING.xl,
     justifyContent: 'center',
     alignItems: 'center',
   },
@@ -124,22 +119,28 @@ const styles = StyleSheet.create({
     marginTop: SPACING.md,
     backgroundColor: COLORS.white,
     paddingVertical: SPACING.md,
-    paddingHorizontal: SPACING.md,
   },
   sectionHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
     marginBottom: SPACING.md,
+    paddingHorizontal: SPACING.lg,
   },
   sectionTitle: {
     fontSize: 18,
-    fontWeight: 'bold',
-    color: COLORS.textPrimary,
+    fontWeight: '700',
+    color: '#000',
   },
   seeAll: {
-    color: COLORS.primary,
+    fontSize: 14,
+    color: '#2196F3',
     fontWeight: '600',
+    textDecorationLine: 'underline',
+  },
+  cardsScroll: {
+    paddingLeft: SPACING.lg,
+    paddingRight: SPACING.sm, // since cards have marginRight
   },
 });
 
