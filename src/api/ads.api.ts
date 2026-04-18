@@ -1,57 +1,120 @@
 import client from './client';
 import { AdResponse, Ad } from '../types/ad.types';
 import { FilterState } from '../types/filter.types';
+import { ENV } from '../config/env';
 
-const dummyAds: Ad[] = Array.from({ length: 30 }).map((_, i) => ({
-  id: `mock-ad-${i}`,
-  title: i % 3 === 0 ? `Toyota Corolla 202${i % 4} - Perfect Condition` : i % 3 === 1 ? `iPhone 1${i % 5 + 1} Pro Max 256GB` : `Apartment for Rent in Beirut`,
-  description: 'This is a great description for a great item. Contact for more details. Urgent sale!',
-  price: {
-    value: 5000 + i * 150,
-    currency: 'USD',
-    formatted: `$ ${(5000 + i * 150).toLocaleString()}`
-  },
-  location: {
-    name: i % 3 === 0 ? 'Beirut' : 'Tripoli',
-    externalID: 'loc-1'
-  },
-  category: {
-    name: i % 3 === 0 ? 'Vehicles' : i % 3 === 1 ? 'Mobiles' : 'Properties',
-    externalID: i % 3 === 0 ? '1' : i % 3 === 1 ? '3' : '2'
-  },
-  images: [
-    {
-      url: i % 3 === 0
-        ? 'https://images.unsplash.com/photo-1542362567-b07e54358753?q=80&w=1000&auto=format&fit=crop'
-        : i % 3 === 1
-          ? 'https://images.unsplash.com/photo-1511707171634-5f897ff02aa9?q=80&w=1000&auto=format&fit=crop'
-          : 'https://images.unsplash.com/photo-1564013799919-ab600027ffc6?q=80&w=1000&auto=format&fit=crop'
-    }
-  ],
-  timestamp: new Date().toISOString(),
-  user: {
-    name: 'John Doe'
+const mapSourceToAd = (hit: any): Ad => {
+  const source = hit._source;
+  const idStr = source.id ? String(source.id) : hit._id;
+
+  const photos = source.photos || [];
+  const images = photos.map((p: any) => ({
+    url: `https://images.olx.com.lb/thumbnails/${p.id}-400x300.webp`
+  }));
+
+  if (images.length === 0) {
+    images.push({ url: 'https://www.olx.com.lb/static/olxlb/naspers/images/category_placeholder.png' });
   }
-}));
+
+  const catLevel = source.category ? source.category[source.category.length - 1] : { name: 'Unknown', externalID: '' };
+  const locLevel = source.location ? source.location[source.location.length - 1] : { name: 'Unknown', externalID: '' };
+  const priceValue = source.extraFields?.price ?? source.price ?? 0;
+
+  return {
+    id: hit._id || idStr,
+    title: source.title || '',
+    description: source.description || '',
+    price: {
+      value: priceValue,
+      currency: 'USD',
+      formatted: priceValue ? `$${priceValue.toLocaleString()}` : 'Contact for Price'
+    },
+    location: {
+      name: locLevel.name,
+      externalID: locLevel.externalID
+    },
+    category: {
+      name: catLevel.name,
+      externalID: catLevel.externalID
+    },
+    images: images,
+    timestamp: source.createdAt ? new Date(source.createdAt * 1000).toISOString() : new Date().toISOString(),
+    user: {
+      name: source.contactInfo?.name || source.agency?.name || 'Private Seller',
+      contactInfo: source.contactInfo
+    },
+    formattedExtraFields: source.formattedExtraFields
+  };
+};
+
+const buildSearchQuery = (filters: FilterState, from: number = 0, size: number = 12, trackTotalHits = true) => {
+  const must: any[] = [];
+
+  if (filters.categoryId) {
+    must.push({ term: { 'category.externalID': filters.categoryId } });
+  }
+
+  if (filters.locationId) {
+    must.push({ term: { 'location.externalID': filters.locationId } });
+  }
+
+  if (filters.query) {
+    must.push({ match: { title: filters.query } });
+  }
+
+  if (filters.dynamicFields) {
+    Object.keys(filters.dynamicFields).forEach(key => {
+      const val = filters.dynamicFields![key];
+      if (val !== undefined && val !== null && val !== '') {
+        must.push({ term: { [`extraFields.${key}`]: val } });
+      }
+    });
+  }
+
+  if (filters.minPrice !== undefined || filters.maxPrice !== undefined) {
+    const range: any = {};
+    if (filters.minPrice !== undefined) range.gte = filters.minPrice;
+    if (filters.maxPrice !== undefined) range.lte = filters.maxPrice;
+    must.push({ range: { 'extraFields.price': range } });
+  }
+
+  const queryObj = must.length > 0 ? { bool: { must } } : { match_all: {} };
+
+  return JSON.stringify({
+    from,
+    size,
+    track_total_hits: trackTotalHits,
+    query: queryObj,
+    sort: [{ timestamp: { order: "desc" } }]
+  });
+};
 
 export const fetchAds = async (
   filters: FilterState,
   from: number = 0,
   size: number = 12
 ): Promise<Ad[]> => {
-  // Simulate network delay to test loading states
-  await new Promise(resolve => setTimeout(resolve, 600));
+  const indexLine = JSON.stringify({ index: 'olx-lb-production-ads-en' });
+  const queryLine = buildSearchQuery(filters, from, size);
+  const payload = `${indexLine}\n${queryLine}\n`;
 
-  let filtered = dummyAds;
+  const response = await client.post(ENV.SEARCH_URL, payload, {
+    headers: { 'Content-Type': 'application/x-ndjson' }
+  });
 
-  if (filters.categoryId) {
-    filtered = filtered.filter(a => a.category.externalID === filters.categoryId);
-  }
-
-  if (filters.query) {
-    filtered = filtered.filter(a => a.title.toLowerCase().includes(filters.query!.toLowerCase()));
-  }
-
-  // Basic pagination
-  return filtered.slice(from, from + size);
+  const hits = response.data?.responses?.[0]?.hits?.hits || [];
+  return hits.map(mapSourceToAd);
 };
+
+export const fetchAdsCount = async (filters: FilterState): Promise<number> => {
+  const indexLine = JSON.stringify({ index: 'olx-lb-production-ads-en' });
+  const queryLine = buildSearchQuery(filters, 0, 0, true);
+  const payload = `${indexLine}\n${queryLine}\n`;
+
+  const response = await client.post(ENV.SEARCH_URL, payload, {
+    headers: { 'Content-Type': 'application/x-ndjson' }
+  });
+
+  return response.data?.responses?.[0]?.hits?.total?.value || 0;
+};
+
