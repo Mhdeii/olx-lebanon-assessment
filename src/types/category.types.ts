@@ -1,7 +1,7 @@
 export interface Category {
   id: number;
   name: string;
-  name_l1: string; // Arabic name
+  name_l1: string;
   externalID: string;
   slug: string;
   level: number;

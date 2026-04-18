@@ -7,17 +7,20 @@ import {
   Text,
   RefreshControl,
 } from 'react-native';
-import {Ad} from '../../types/ad.types';
+import { Ad } from '../../types/ad.types';
 import AdCard from './AdCard';
-import {COLORS} from '../../constants/colors';
-import {SPACING} from '../../constants/spacing';
-
+import { COLORS } from '../../constants/colors';
+import { SPACING } from '../../constants/spacing';
+import { CustomText } from './../CustomText';
 interface AdListProps {
   ads: Ad[];
   loading: boolean;
   onLoadMore?: () => void;
   onRefresh?: () => void;
   refreshing?: boolean;
+  onAdPress?: (ad: Ad) => void;
+  headerComponent?: React.ReactElement;
+  isEliteMock?: boolean;
 }
 
 const AdList: React.FC<AdListProps> = ({
@@ -26,8 +29,10 @@ const AdList: React.FC<AdListProps> = ({
   onLoadMore,
   onRefresh,
   refreshing,
+  onAdPress,
+  headerComponent,
+  isEliteMock,
 }) => {
-
   const renderFooter = () => {
     if (!loading) return null;
     return (
@@ -41,7 +46,7 @@ const AdList: React.FC<AdListProps> = ({
     if (loading) return null;
     return (
       <View style={styles.empty}>
-        <Text style={styles.emptyText}>No results found</Text>
+        <CustomText tx="no_results" style={styles.emptyText} />
       </View>
     );
   };
@@ -50,21 +55,27 @@ const AdList: React.FC<AdListProps> = ({
     <FlatList
       data={ads}
       keyExtractor={item => item.id}
-      renderItem={({item}) => <AdCard ad={item} />}
+      renderItem={({ item, index }) => (
+        <AdCard
+          ad={item}
+          onPress={() => onAdPress?.(item)}
+          isElite={isEliteMock ? index < 2 : false}
+        />
+      )}
+      ListHeaderComponent={headerComponent}
       contentContainerStyle={styles.list}
-      numColumns={1} // or 2 if grid is preferred
+      numColumns={1}
       onEndReached={onLoadMore}
       onEndReachedThreshold={0.5}
       ListFooterComponent={renderFooter}
       ListEmptyComponent={renderEmpty}
       refreshControl={
-        <RefreshControl 
-          refreshing={!!refreshing} 
-          onRefresh={onRefresh} 
+        <RefreshControl
+          refreshing={!!refreshing}
+          onRefresh={onRefresh}
           colors={[COLORS.primary]}
         />
       }
-      // Performance optimizations
       removeClippedSubviews={true}
       initialNumToRender={6}
       maxToRenderPerBatch={6}
@@ -76,6 +87,7 @@ const AdList: React.FC<AdListProps> = ({
 const styles = StyleSheet.create({
   list: {
     padding: SPACING.md,
+    paddingTop: 0,
   },
   loader: {
     paddingVertical: SPACING.lg,

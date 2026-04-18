@@ -8,11 +8,14 @@ import {
   Image,
 } from 'react-native';
 import Ionicons from 'react-native-vector-icons/Ionicons';
-import { useTranslation } from 'react-i18next';
+import { observer } from 'mobx-react-lite';
+import { languageStore } from '../../../store/language.store';
+import { t } from '../../../i18n/t';
+import { CustomView } from '../../../components/CustomView';
 import { COLORS } from '../../../constants/colors';
 import { SPACING } from '../../../constants/spacing';
+import { CustomText } from '../../../components/CustomText';
 
-import BannerCarousel from './BannerCarousel';
 
 interface HomeHeaderProps {
   location: string;
@@ -20,29 +23,25 @@ interface HomeHeaderProps {
   onLocationPress: () => void;
 }
 
-const HomeHeader: React.FC<HomeHeaderProps> = ({
+
+const HomeHeader: React.FC<HomeHeaderProps> = observer(({
   location,
   onSearch,
   onLocationPress,
 }) => {
-  const { t, i18n } = useTranslation();
-  const isRTL = i18n.language === 'ar';
+  const isRTL = languageStore.isRTL;
 
   return (
     <View style={styles.container}>
-      <TouchableOpacity
-        onPress={onLocationPress}
-        style={[styles.locationContainer, { flexDirection: isRTL ? 'row-reverse' : 'row' }]}
-        activeOpacity={0.7}
-      >
+      <CustomView row style={[styles.locationContainer]}>
         <Ionicons name="location" size={20} color={COLORS.primary} />
-        <Text style={styles.locationValue} numberOfLines={1}>
+        <CustomText style={styles.locationValue} numberOfLines={1}>
           {location}
-        </Text>
+        </CustomText>
         <Ionicons name="chevron-down" size={16} color="#333" style={{ marginHorizontal: 4 }} />
-      </TouchableOpacity>
+      </CustomView>
 
-      <View style={[styles.searchContainer, { flexDirection: isRTL ? 'row-reverse' : 'row' }]}>
+      <CustomView row style={[styles.searchContainer]}>
         <Ionicons name="search-outline" size={20} color={COLORS.textSecondary} style={{ marginHorizontal: SPACING.xs }} />
         <TextInput
           style={[styles.searchInput, { textAlign: isRTL ? 'right' : 'left' }]}
@@ -50,12 +49,11 @@ const HomeHeader: React.FC<HomeHeaderProps> = ({
           placeholderTextColor={COLORS.textSecondary}
           onSubmitEditing={(e) => onSearch(e.nativeEvent.text)}
         />
-      </View>
+      </CustomView>
 
-      <BannerCarousel />
     </View>
   );
-};
+});
 
 const styles = StyleSheet.create({
   container: {

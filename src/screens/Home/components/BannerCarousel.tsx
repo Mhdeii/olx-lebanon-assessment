@@ -84,11 +84,12 @@ const BannerCarousel: React.FC = () => {
 
 const styles = StyleSheet.create({
   container: {
+    alignSelf: 'center',
     height: BANNER_HEIGHT,
     width: CAROUSEL_WIDTH,
     borderRadius: 8,
     overflow: 'hidden',
-    backgroundColor: '#eee',
+    backgroundColor: COLORS.white,
   },
   bannerContainer: {
     width: CAROUSEL_WIDTH,
